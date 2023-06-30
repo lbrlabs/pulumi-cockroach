@@ -10,7 +10,9 @@ import (
 	"github.com/lbrlabs/pulumi-cockroach/provider/pkg/version"
 	tfpfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/x"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // all of the tls token components used below.
@@ -47,6 +49,8 @@ func cockroachResource(mod string, res string) tokens.Type {
 
 //go:embed cmd/pulumi-resource-cockroach/bridge-metadata.json
 var bridgeMetadata []byte
+
+var providerName = "cockroach"
 
 // Provider returns additional overlaid schema and metadata associated with the tls package.
 func Provider() tfpfbridge.ProviderInfo {
@@ -120,6 +124,22 @@ func Provider() tfpfbridge.ProviderInfo {
 			},
 		},
 	}
+
+	err := x.ComputeDefaults(
+		&info,
+		x.TokensSingleModule(
+			fmt.Sprintf("%s_", providerName),
+			"index",
+			x.MakeStandardToken(providerName),
+		),
+	)
+
+	contract.AssertNoErrorf(err, "Failed to compute defaults")
+
+	err = x.AutoAliasing(&info, info.GetMetadata())
+	contract.AssertNoErrorf(err, "Failed to apply aliasing")
+
+	info.SetAutonaming(255, "-")
 
 	return tfpfbridge.ProviderInfo{
 		ProviderInfo: info,
